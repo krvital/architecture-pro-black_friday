@@ -2,13 +2,12 @@ name: sharding-repl-cache
 services:
   pymongo_api:
     container_name: pymongo_api1
-    build:
-      context: api_app
-      dockerfile: Dockerfile
+    image: kazhem/pymongo_api:1.0.0
     networks:
       app-network:
     depends_on:
       - router1
+      - redis
     ports:
       - 8080:8080
     environment:
@@ -20,8 +19,6 @@ services:
     container_name: configSrv1
     image: dh-mirror.gitverse.ru/mongo:latest
     restart: always
-    ports:
-      - "27017:27017"
     networks:
       app-network:
     volumes:
@@ -50,6 +47,7 @@ services:
       [
         "--configsvr",
         "--replSet", "configSrvReplSet",
+        "--bind_ip_all",
         "--port", "27017"
       ] 
     healthcheck:
@@ -81,8 +79,6 @@ services:
     container_name: shard1a
     image: dh-mirror.gitverse.ru/mongo:latest
     restart: always
-    ports:
-      - "27018:27018"
     networks:
       app-network:
     volumes:
@@ -143,8 +139,6 @@ services:
     container_name: shard2a
     image: dh-mirror.gitverse.ru/mongo:latest
     restart: always
-    ports:
-      - "27019:27019"
     networks:
       app-network:
     volumes:
@@ -204,9 +198,11 @@ services:
   router1:
     image: dh-mirror.gitverse.ru/mongo:latest
     container_name: router1
-    ports:
-      - "27020:27020"
     restart: always
+    depends_on:
+      - configSrv1
+      - configSrv2
+      - configSrv3
     networks:
       app-network:
     command:
