@@ -1,23 +1,10 @@
-# pymongo-api
+# architecture-pro-standart
 
-## Как запустить
-
-Запускаем mongodb и приложение
-
-```shell
-docker compose up -d
-```
-
-Заполняем mongodb данными
-
-```shell
-./scripts/mongo-init.sh
-```
-
-## Как проверить
-
-Откройте в браузере http://localhost:8080
-
-## Доступные эндпоинты
-
-Список доступных эндпоинтов, swagger http://<ip виртуальной машины>:8080/docs
+### Solutions
+* [Task 1,5,6](./Task1_5_6)
+* [Task 2](./mongo-sharding)
+* [Task 3](./mongo-sharding-repl)
+* [Task 4](./sharding-repl-cache/README.md)
+* [Task 7](./Task7/ADR.md)
+* [Task 8](./Task8/ADR.md)
+* [Task 9](./Task9/ADR.md)
