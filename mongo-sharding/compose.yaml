@@ -2,15 +2,15 @@ name: mongo-sharding
 services:
   pymongo_api:
     container_name: pymongo_api
-    build: 
-      context: api_app
-      dockerfile: Dockerfile
+    image: kazhem/pymongo_api:1.0.0
+    networks:
+      app-network:
     depends_on:
       - mongos_router
     ports:
       - 8080:8080
     environment:
-      MONGODB_URL: "mongodb://mongos_router"
+      MONGODB_URL: "mongodb://mongos_router:27020"
       MONGODB_DATABASE_NAME: "somedb"
 
   configSrv:
@@ -21,7 +21,6 @@ services:
       - "27017:27017"
     networks:
       app-network:
-        ipv4_address: 173.17.0.10
     volumes:
       - config-data:/data/db
     command:
@@ -45,7 +44,6 @@ services:
       - "27018:27018"
     networks:
       app-network:
-        ipv4_address: 173.17.0.9
     volumes:
       - shard1-data:/data/db
     command:
@@ -56,7 +54,7 @@ services:
         "--port", "27018"
       ]
     healthcheck:
-      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      test: [ "CMD", "mongosh", "--port", "27018", "--eval", "db.adminCommand('ping')" ]
       interval: 5s
       start_period: 10s
 
@@ -68,7 +66,6 @@ services:
       - "27019:27019"
     networks:
       app-network:
-        ipv4_address: 173.17.0.8
     volumes:
       - shard2-data:/data/db
     command:
@@ -76,11 +73,10 @@ services:
         "--shardsvr",
         "--replSet", "shard2",
         "--bind_ip_all",
-        "--port",
-        "27019"
+        "--port", "27019"
       ]
     healthcheck:
-      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      test: [ "CMD", "mongosh", "--port", "27019", "--eval", "db.adminCommand('ping')" ]
       interval: 5s
       start_period: 10s
 
@@ -92,7 +88,6 @@ services:
       - "27020:27020"
     networks:
       app-network:
-        ipv4_address: 173.17.0.7
     command:
       [
         "mongos",
@@ -101,7 +96,7 @@ services:
         "--port", "27020"
       ]
     healthcheck:
-      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      test: [ "CMD", "mongosh", "--port", "27020", "--eval", "db.adminCommand('ping')" ]
       interval: 5s
       start_period: 10s
 

@@ -4,6 +4,32 @@
 # Setting up sharding and initialize db with data
 ###
 
+wait_for_healthy() {
+  for svc in "$@"; do
+    echo "Waiting for $svc to become healthy..."
+    until [ "$(docker inspect -f '{{.State.Health.Status}}' "$svc")" = "healthy" ]; do
+      sleep 1
+    done
+    echo "$svc is healthy"
+  done
+}
+
+wait_for_primary() {
+  local container=$1
+  local port=$2
+
+  echo "Waiting for PRIMARY on $container..."
+
+  until docker compose exec -T $container mongosh --quiet --port $port --eval \
+    "rs.status().members.some(m => m.stateStr === 'PRIMARY')" 2>/dev/null | grep -q "true"; do
+    sleep 1
+  done
+
+  echo "Replica set on $container has a PRIMARY"
+}
+
+wait_for_healthy configSrv1
+
 docker compose exec -T configSrv1 mongosh --port 27017 <<EOF
 rs.initiate({
     _id: "configSrvReplSet",
@@ -17,6 +43,9 @@ rs.initiate({
 exit();
 EOF
 
+wait_for_primary configSrv1 27017
+wait_for_healthy shard1a
+
 docker compose exec -T shard1a mongosh --port 27018 <<EOF
 rs.initiate({
     _id: "shard1ReplSet",
@@ -28,6 +57,9 @@ rs.initiate({
 });
 exit();
 EOF
+
+wait_for_primary shard1a 27018
+wait_for_healthy shard2a
 
 docker compose exec -T shard2a mongosh --port 27019 <<EOF
 rs.initiate({
@@ -41,15 +73,12 @@ rs.initiate({
 exit();
 EOF
 
-until [ "$(docker inspect -f '{{.State.Health.Status}}' router1)" = "healthy" ]; do sleep 1; done
+wait_for_primary shard2a 27019
+wait_for_healthy router1
 
 docker compose exec -T router1 mongosh --port 27020 <<EOF
-sh.addShard("shard1ReplSet/shard1a:27018");
-sh.addShard("shard1ReplSet/shard1b:27018");
-sh.addShard("shard1ReplSet/shard1c:27018");
-sh.addShard("shard2ReplSet/shard2a:27019");
-sh.addShard("shard2ReplSet/shard2b:27019");
-sh.addShard("shard2ReplSet/shard2c:27019");
+sh.addShard("shard1ReplSet/shard1a:27018,shard1b:27018,shard1c:27018");
+sh.addShard("shard2ReplSet/shard2a:27019,shard2b:27019,shard2c:27019");
 
 sh.enableSharding("somedb");
 sh.shardCollection("somedb.helloDoc", { "name": "hashed" });
